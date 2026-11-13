@@ -235,6 +235,11 @@ CLAUDE_USAGE: dict | None = None   # {"five_hour": {"utilization", "resets_at"},
 THU_NGAN = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
 
 
+def _when(t: datetime) -> str:
+    """Giờ đặt lại ghi rõ: 08:00 AM · Thứ Hai 16/11"""
+    return f"{t:%I:%M %p} · {THU[t.weekday()]} {t.day}/{t.month}"
+
+
 def _reset_label(iso: str | None, now: datetime) -> str:
     if not iso:
         return ""
@@ -242,9 +247,7 @@ def _reset_label(iso: str | None, now: datetime) -> str:
         t = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(TZ)
     except ValueError:
         return ""
-    if t.date() == now.date():
-        return f"đặt lại {t:%H:%M}"
-    return f"đặt lại {THU_NGAN[t.weekday()]} {t:%H:%M}"
+    return f"đặt lại {_when(t)}"
 
 
 def draw_claude(d, y: int, usage: dict, now: datetime) -> int:
@@ -276,7 +279,7 @@ def draw_claude(d, y: int, usage: dict, now: datetime) -> int:
         if pct:
             fill_w = max(16, col_w * min(pct, 100) / 100)
             d.rounded_rectangle([x0, by, x0 + fill_w, by + 16], radius=8, fill=BLACK)
-        d.text((x0, by + 24), _reset_label(v.get("resets_at"), now), font=f_small, fill=MID)
+        d.text((x0, by + 24), fit(d, _reset_label(v.get("resets_at"), now), f_small, col_w), font=f_small, fill=MID)
     return y + 92
 
 
@@ -414,8 +417,7 @@ def _claude_block(d, y, name, v, now, span, big=False):
             d.text((rx, y + 83), status, font=fs, fill=DARK, anchor="lm")
     fi = font("Medium", 26)
     if reset_at:
-        when = f"{reset_at:%H:%M}" if reset_at.date() == now.date() else f"{THU_NGAN[reset_at.weekday()]} {reset_at:%H:%M}"
-        d.text((rx, y + 124), f"đặt lại {when}", font=fi, fill=DARK, anchor="lm")
+        d.text((rx, y + 124), fit(d, f"đặt lại {_when(reset_at)}", fi, W - MARGIN - rx), font=fi, fill=DARK, anchor="lm")
         d.text((rx, y + 158), left, font=fi, fill=DARK, anchor="lm")
     y += 182
     # thanh dày toàn chiều ngang
@@ -456,8 +458,7 @@ def _claude_mini(d, x0, y, w, name, v, now, empty=""):
         d.rounded_rectangle([x0, by, x0 + fw, by + bh], radius=bh // 2, fill=BLACK)
     left, reset_at = _remaining(v.get("resets_at"), now)
     if reset_at:
-        when = f"{reset_at:%H:%M}" if reset_at.date() == now.date() else f"{THU_NGAN[reset_at.weekday()]} {reset_at:%H:%M}"
-        cap = f"đặt lại {when} · {left}"
+        cap = f"đặt lại {_when(reset_at)}"
     else:
         cap = empty if pct is None else ""
     fc = font("Regular", 22)

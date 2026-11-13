@@ -62,7 +62,7 @@ fetch_and_show() {
   fi
   eips -c
   sleep 1
-  eips -g "$IMG"
+  eips -f -g "$IMG"
   b=$(battery)
   if [ "$b" -lt "${LOW_BATTERY:-15}" ] 2>/dev/null; then
     eips 1 1 "PIN YEU ${b}% - HAY SAC"

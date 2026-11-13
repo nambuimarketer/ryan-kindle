@@ -15,7 +15,6 @@ command -v gh  >/dev/null || die "Chưa có GitHub CLI (gh). Cài ở https://cl
 
 # 1. Đăng nhập GitHub (cần quyền 'workflow' để đẩy file .github/workflows)
 say "1/6 Đăng nhập GitHub"
-set -x   # tạm thời: hiện từng lệnh của bước 1 để dò chỗ bị đứng
 if gh auth status -h github.com >/dev/null 2>&1; then
   # chỉ xin thêm quyền 'workflow' khi tài khoản đang dùng chưa có (lệnh này cần bấm xác nhận trên trình duyệt)
   if ! gh auth status -h github.com --active 2>&1 | grep -q "'workflow'"; then
@@ -28,7 +27,6 @@ fi
 gh auth setup-git >/dev/null
 OWNER=$(gh api user -q .login)
 OWNER_ID=$(gh api user -q .id)
-set +x
 echo "Tài khoản: $OWNER"
 
 # 2. Thông tin

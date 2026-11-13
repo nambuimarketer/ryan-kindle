@@ -2,7 +2,11 @@
 # Cài job gửi việc trong vault + mức dùng Claude trên Mac: chạy 10 phút/lần bằng launchd.
 # Cách dùng:  bash install.sh
 set -e
-DIR="$(cd "$(dirname "$0")" && pwd)"
+SRC="$(cd "$(dirname "$0")" && pwd)"
+# Chép script ra ~/kindle-dashboard-mac: macOS chặn job chạy ngầm đọc thư mục Downloads/Desktop/Documents
+DIR="$HOME/kindle-dashboard-mac"
+mkdir -p "$DIR"
+cp "$SRC/claude_usage.sh" "$SRC/vault_tasks.py" "$DIR/"
 chmod +x "$DIR/claude_usage.sh"
 command -v python3 >/dev/null || echo "CẢNH BÁO: chưa có python3 (cần để đọc việc trong vault). Cài: brew install python"
 
