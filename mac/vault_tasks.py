@@ -4,19 +4,27 @@
 Quy ước (CLAUDE.md mục 10 của vault):
     - [ ] Nội dung việc [due:: YYYY-MM-DD] [time:: HH:MM]
 Hạn chót của dự án lấy từ property `due` trong frontmatter (type: project).
-Bỏ qua: khối code, thư mục hệ thống/lưu trữ, note có status paused/done/archived.
+Bỏ qua: khối code, thư mục hệ thống/lưu trữ (90-system/ gồm cả templates/, 99-archive/),
+note có status paused/done/archived, dòng đã xong `- [x]` và đã bỏ `- [-]`.
+
+Thứ tự gửi lên (Apps Script giữ tối đa 30 việc, cắt từ cuối khi quá ~8,5 KB):
+    1. việc quá hạn, hôm nay, 7 ngày tới (theo hạn, giờ)
+    2. việc chưa có hạn (theo priority của note)
+    3. việc có hạn xa hơn 7 ngày (theo hạn)
+Nhóm 1 không bao giờ bị cắt bởi MAX_TASKS.
 
 Cách dùng:  python3 vault_tasks.py <đường-dẫn-vault>
 """
 import json
 import re
 import sys
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 SKIP_DIRS = {".obsidian", ".trash", ".git", "90-system", "99-archive"}
 SKIP_STATUS = {"paused", "done", "archived"}
-MAX_TASKS = 30      # Apps Script chỉ lưu được khoảng 9 KB mỗi mục
+MAX_TASKS = 30      # Apps Script chỉ lưu được khoảng 9 KB mỗi mục (30 việc ≈ 5 KB)
+SOON_DAYS = 7       # quá hạn, hôm nay và 7 ngày tới luôn được gửi đủ
 MAX_TITLE = 80
 
 TASK = re.compile(r"^\s*[-*+] \[ \] (.+?)\s*$")
@@ -90,13 +98,22 @@ def collect(vault: Path):
             if tm:
                 t["time"] = tm.group(1).zfill(5)
             tasks.append(t)
-    # việc có hạn trước (hạn gần nhất trước), rồi việc chưa có hạn theo ưu tiên của note
-    tasks.sort(key=lambda t: (t.get("due") is None, t.get("due") or "", t.get("time") or "99:99", t["prio"], t["title"].lower()))
+    today = date.today().isoformat()
+    soon = (date.today() + timedelta(days=SOON_DAYS)).isoformat()
+
+    def bucket(t):
+        due = t.get("due")
+        return 1 if due is None else (0 if due <= soon else 2)
+
+    tasks.sort(key=lambda t: (bucket(t), t.get("due") or "", t.get("time") or "99:99", t["prio"], t["title"].lower()))
     total = len(tasks)
     dated = sum(1 for t in tasks if t.get("due"))
+    overdue = sum(1 for t in tasks if t.get("due") and t["due"] < today)
+    n_soon = sum(1 for t in tasks if bucket(t) == 0)
     for t in tasks:
         t.pop("prio", None)
-    return {"tasks": tasks[:MAX_TASKS], "total": total, "dated": dated,
+    return {"tasks": tasks[:max(MAX_TASKS, n_soon)], "total": total, "dated": dated,
+            "overdue": overdue, "soon": n_soon,
             "read_at": datetime.now().astimezone().isoformat(timespec="seconds")}
 
 

@@ -714,7 +714,7 @@ def render(events: list[Event], tasks: list[Task], now: datetime, weather: Weath
 
     # ---- tính trước khối dưới cùng (lịch hôm nay + ngày mai) để todo lấp phần giữa
     footer_y = H - 64
-    min_todo = 62 + 3 * 72 if tasks else 140   # luôn chừa chỗ cho ít nhất ~3 việc
+    min_todo = 62 + 3 * 72 + 44 if tasks else 140   # luôn chừa chỗ cho ít nhất 3 việc + dòng "+ N việc nữa"
     cal_max, tom_max = 6, 3
 
     def _bottom_h(cm, tm):
@@ -731,9 +731,12 @@ def render(events: list[Event], tasks: list[Task], now: datetime, weather: Weath
     bottom_y = footer_y - _bottom_h(cal_max, tom_max)
 
     # ============ VIỆC CẦN LÀM (khu vực chính)
-    # sắp xếp ổn định: việc có hạn trước (gần nhất trước), việc chưa hạn giữ thứ tự nguồn gửi lên
-    tasks_open = sorted(tasks, key=lambda t: (t.due is None, t.due or date.max, t.time or "99:99"))
-    overdue = sum(1 for t in tasks_open if t.due and t.due < today)
+    # sắp xếp ổn định: quá hạn, hôm nay, 7 ngày tới trước; rồi việc chưa hạn (giữ thứ tự nguồn gửi lên);
+    # việc có hạn xa hơn 7 ngày (ví dụ hạn dự án) xuống cuối để không chiếm chỗ trên màn hình
+    soon = today + timedelta(days=7)
+    tasks_open = sorted(tasks, key=lambda t: (1 if t.due is None else (0 if t.due <= soon else 2),
+                                              t.due or date.max, t.time or "99:99"))
+    overdue = max(sum(1 for t in tasks_open if t.due and t.due < today), int((VAULT_META or {}).get("overdue") or 0))
     due_today = sum(1 for t in tasks_open if t.due == today)
     total = max(len(tasks_open), int((VAULT_META or {}).get("total") or 0))
     right = f"{total} việc" + (f" · {overdue} quá hạn" if overdue else "") + \
